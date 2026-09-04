@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 # 페이지 기본 설정
@@ -42,18 +41,18 @@ peak_temp = st.sidebar.slider(
 # 시간 데이터 (0시 ~ 23시)
 hours = np.arange(24)
 
-# 일조량 및 기온 시간대별 프로필 생성 (가상의 햇빛 곡선)
+# 일조량 및 기온 시간대별 프로필 생성
 irradiance = np.maximum(
     0, max_irradiance * np.sin(np.pi * (hours - 6) / 12)
-)  # 6시~18시 일출/일몰
+)
 temperature = 15 + (peak_temp - 15) * np.sin(np.pi * (hours - 8) / 12)
 temperature = np.maximum(10, temperature)
 
-# 온도가 25도를 초과할 때 효율 감소 (태양광 패널 온도 계수: -0.4%/°C)
+# 온도가 25도를 초과할 때 효율 감소 (-0.4%/°C)
 temp_loss = np.maximum(0, (temperature - 25) * 0.004)
 adjusted_efficiency = base_efficiency * (1 - temp_loss)
 
-# 시간당 발전량 산출 (kW) = 일조량(W/m²) * 면적(m²) * 조정 효율 / 1000
+# 시간당 발전량 산출 (kW)
 power_kw = (irradiance * panel_area * adjusted_efficiency) / 1000
 total_energy_kwh = np.sum(power_kw)
 
@@ -65,7 +64,7 @@ df = pd.DataFrame(
         "기온 (°C)": np.round(temperature, 1),
         "발전량 (kW)": np.round(power_kw, 2),
     }
-)
+).set_index("시간 (시)")
 
 # 대시보드 상단 메트릭
 col1, col2, col3 = st.columns(3)
@@ -75,16 +74,9 @@ col3.metric("평균 온도 손실율", f"{np.mean(temp_loss)*100:.2f} %")
 
 st.markdown("---")
 
-# 시각화 그래프
+# 시각화 그래프 (Streamlit 기본 차트 사용)
 st.subheader("📈 시간대별 일조량 및 발전량 추이")
-fig = px.line(
-    df,
-    x="시간 (시)",
-    y=["일조량 (W/m²)", "발전량 (kW)"],
-    markers=True,
-    title="24시간 발전 프로필 시뮬레이션",
-)
-st.plotly_chart(fig, use_container_width=True)
+st.line_chart(df[["일조량 (W/m²)", "발전량 (kW)"]])
 
 # 데이터 테이블 출력
 with st.expander("📊 세부 데이터 보기"):
